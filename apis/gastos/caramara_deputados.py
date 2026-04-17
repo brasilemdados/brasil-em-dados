@@ -62,3 +62,27 @@ class InformacoesCamara:
             raise RuntimeError(f"Erro na comunicação com a API: {erro}")
         except Exception as erro:
             raise RuntimeError(f"Erro inesperado: {erro}")
+
+    def info_deputados(self) -> None:
+        local = Path("db/csv")
+        try:
+            csv_legislatura = self._legislaturas()
+
+            with (
+                open(file=csv_legislatura, mode="r", encoding="utf-8") as arquivo,
+                open(
+                    file=f"{local}/endpoints_dep.csv", mode="a", encoding="utf-8"
+                ) as arquivo_saida,
+            ):
+                for linha in arquivo:
+                    ids_lista: list[str] = linha.strip().split(",")
+
+                    for id_unico in ids_lista:
+                        id_limpo: str = id_unico.strip()
+                        if id_limpo:
+                            endpoint = f"{self.url_api}deputados?idLegislatura={id_limpo}&itens=1000\n"
+
+                            arquivo_saida.write(endpoint)
+
+        except Exception as erro:
+            raise Exception(f"Erro ao extrair os dados do {csv_legislatura}") from erro
