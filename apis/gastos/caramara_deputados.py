@@ -1,5 +1,7 @@
+import json
 from pathlib import Path
 import requests
+import csv
 
 
 class InformacoesCamara:
@@ -22,31 +24,41 @@ class InformacoesCamara:
             raise ValueError("url_api deve ser uma string não vazia.")
         self.url_api: str = url_api
 
-        def get_lesgislaturas(self) -> None:
-            """Consulta as legislaturas na API e salva os IDs em arquivo CSV.
+    def _legislaturas(self) -> Path:
+        """Consulta as legislaturas na API e salva os IDs em arquivo CSV.
 
-            O método realiza uma requisição ao endpoint de legislaturas, extrai
-            os identificadores retornados em `dados` e os salva no arquivo
-            `csv`.
+        O método realiza uma requisição ao endpoint de legislaturas, extrai
+        os identificadores retornados em `dados` e os salva no arquivo
+        `csv`.
 
-            Raises:
-                requests.RequestException: Se ocorrer erro na requisição HTTP.
-                OSError: Se ocorrer erro ao criar ou escrever o arquivo.
-            """
-            uri = f"{url_api}/legislaturas?pagina=1&itens=60"
-            local: str = "db/csv/"
-            response: dict = requests.get(uri).json()
-            try:
-                response.raise_for_status()
-            except requests.exceptions.HTTPError as erro:
-                raise requests.exceptions.HTTPError(
-                    f"Erro na requisição get em: {uri}"
-                ) from erro
-            ids_deputados: list[int] = [
-                deputado["id"] for deputado in response.get("dados", [])
+        Raises:
+            requests.RequestException: Se ocorrer erro na requisição HTTP.
+            OSError: Se ocorrer erro ao criar ou escrever o arquivo.
+        """
+        uri = f"{self.url_api}/legislaturas?pagina=1&itens=60"
+        local = Path("db/csv")
+        local.mkdir(parents=True, exist_ok=True)
+        caminho_arquivo: Path = local / "legislaturas.csv"
+
+        try:
+            response = requests.get(url=uri, timeout=60)
+            response.raise_for_status()
+
+            dados = response.json().get("dados", [])
+            ids_legislaturas: list[str] = [
+                str(object=item["id"]) for item in dados if "id" in item
             ]
-            try:
-                with open(file=f"{local}legislaturas.csv", mode="w") as csv:
-                    csv.write(",".join(map(str, ids_deputados)))
-            except OSError as erro:
-                raise FileNotFoundError(f"Não foi encontrado o {local}") from erro
+
+            if not ids_legislaturas:
+                print("Aviso: Nenhum dado encontrado na API.")
+                return caminho_arquivo
+
+            with open(file=caminho_arquivo, mode="w", encoding="utf-8") as arquuivo:
+                arquuivo.write(",".join(ids_legislaturas))
+
+            return caminho_arquivo
+
+        except requests.RequestException as erro:
+            raise RuntimeError(f"Erro na comunicação com a API: {erro}")
+        except Exception as erro:
+            raise RuntimeError(f"Erro inesperado: {erro}")
