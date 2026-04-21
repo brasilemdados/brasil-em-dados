@@ -86,3 +86,19 @@ class InformacoesCamara:
 
         except Exception as erro:
             raise Exception(f"Erro ao extrair os dados do {csv_legislatura}") from erro
+
+    def gera_tb_deputados(self) -> None:
+        arquivo = Path("db/csv/tb_deputados.csv")
+        try:
+            response = requests.get(
+                url="https://dadosabertos.camara.leg.br/api/v2/deputados?idLegislatura=57&itens=1000"
+            ).json()
+            colunas: list = list(dict(response["dados"][0]).keys())
+            dados = response["dados"]
+            with open(file=arquivo, mode="w") as arquivo_csv:
+                tb_deputados = csv.DictWriter(f=arquivo_csv, fieldnames=colunas)
+                tb_deputados.writeheader()
+                tb_deputados.writerows(rowdicts=dados)
+
+        except RuntimeError as erro:
+            print(f"Não foi gerado as colunas do deputados.csv: {erro}")
